@@ -1,36 +1,28 @@
-# Imagen base PHP-FPM para producción
-FROM php:8.2-fpm
+# Imagen base PHP CLI
+FROM php:8.2-cli
 
-# Instalar dependencias del sistema y extensiones de PHP necesarias
+# Instalar dependencias del sistema y PostgreSQL PDO
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     unzip \
     git \
     curl \
-    && docker-php-ext-install pdo pdo_pgsql \
-    && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install pdo pdo_pgsql
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Establecer directorio de trabajo dentro del contenedor
+# Establecer directorio de trabajo
 WORKDIR /var/www/html
 
-# Copiar solo composer.json y composer.lock para cachear dependencias
-COPY laravel-backend/composer.json laravel-backend/composer.lock ./
+# Copiar proyecto Laravel al contenedor
+COPY . .
 
-# Instalar dependencias
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+# Instalar dependencias de Laravel
+RUN composer install --no-interaction --optimize-autoloader
 
-# Copiar el resto del proyecto
-COPY laravel-backend/ .
-
-# Establecer permisos (importante para producción)
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Exponer el puerto de PHP-FPM
+# Exponer puerto para php artisan serve
 EXPOSE 8000
 
 # Comando por defecto
-CMD ["php-fpm"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
